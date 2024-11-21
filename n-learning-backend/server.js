@@ -1,65 +1,91 @@
-const express = require('express');
-const mongoose = require('mongoose');
-const dotenv = require('dotenv');
-const lessonsRoutes = require('../n-learning-backend/routes/lessons');
-const ordersRoutes = require('../n-learning-backend/routes/orders');
-const Lesson = require('./models/Lesson');
-const Order = require('./models/Order');
-
+const express = require("express");
+const mongoose = require("mongoose");
+const dotenv = require("dotenv");
+const cors = require("cors");
+const { body, validationResult } = require("express-validator");
+const lessonsRoutes = require("../n-learning-backend/routes/lessons");
+const ordersRoutes = require("../n-learning-backend/routes/orders");
+const Lesson = require("./models/Lesson");
+const Order = require("./models/Order");
 
 dotenv.config();
+
 const app = express();
 app.use(express.json());
+app.use(cors({ origin: "http://localhost:5000", credentials: true })); // Adjust frontend port
 
-// Middleware to serve static files from the public folder
-app.use(express.static('../public'));
+// Serve static files from the public folder
+app.use(express.static("../public"));
 
-// Middleware for parsing JSON and logging
-app.use(express.json());
+// Order creation route
+app.post(
+  "/",
+  [
+    body("lessonId")
+      .isInt({ gt: 0 })
+      .withMessage("Lesson ID must be a positive integer"),
+    body("quantity")
+      .isInt({ gt: 0 })
+      .withMessage("Quantity must be a positive integer"),
+  ],
+  async (req, res) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ errors: errors.array() });
+    }
 
-app.post('/', async (req, res) => {
-  const { name, phone, lessonIDs, spaces } = req.body;
+    try {
+      const { lessonId, quantity } = req.body;
 
-  try {
-    // Fetch the ObjectIds for the provided lessonIDs
-    const lessons = await Lesson.find({ id: { $in: lessonIDs } }); // `id` matches the numeric ID in the lessons
-    const lessonObjectIds = lessons.map(lesson => lesson._id); // Extract the ObjectIds
+      // Validate the lesson exists in the lessons collection
+      const lesson = await Lesson.findOne({ id: lessonId });
+      if (!lesson) {
+        return res.status(404).json({ error: "Lesson not found" });
+      }
 
-    // Create the new order
-    const order = new Order({
-      name,
-      phone,
-      lessonIDs: lessonObjectIds, // Use ObjectIds instead of plain numbers
-      spaces,
-    });
+      // Check if enough spaces are available
+      if (lesson.spaces < quantity) {
+        return res.status(400).json({ error: "Not enough spaces available" });
+      }
 
-    await order.save();
+      // Update the spaces in the lesson
+      lesson.spaces -= quantity;
+      await lesson.save();
 
-    res.status(201).json({ message: 'Order created successfully', order });
-  } catch (error) {
-    console.error('Error creating order:', error);
-    res.status(500).json({ message: 'Error creating order', error });
+      // Create and save the order
+      const newOrder = new Order({
+        lessonId,
+        quantity,
+        totalPrice: lesson.price * quantity,
+        status: "confirmed", // Default order status
+      });
+
+      await newOrder.save();
+
+      // Return success response
+      res.status(200).json({
+        message: "Order placed successfully!",
+        order: newOrder,
+      });
+    } catch (error) {
+      console.error("Error creating order:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
   }
-});
+);
 
-
-// MongoDB connection (ensure you use the correct URI)
-mongoose.connect(process.env.MONGODB_URI, {
-  authSource: 'Cluster51',
-  authMechanism: 'SCRAM-SHA-1'
-})
-.then(() => console.log('Connected to MongoDB'))
-.catch(err => console.error('MongoDB connection error:', err));
+// MongoDB connection
+mongoose
+  .connect(process.env.MONGODB_URI, {
+    useNewUrlParser: true,
+    useUnifiedTopology: true,
+  })
+  .then(() => console.log("Connected to MongoDB"))
+  .catch((err) => console.error("MongoDB connection error:", err));
 
 // API routes
-app.use('../n-learning-backend/routes/lessons', lessonsRoutes);
-app.use('../n-learning-backend/routes/orders', ordersRoutes);
+app.use("/lessons", lessonsRoutes);
+app.use("/orders", ordersRoutes);
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
-
-const cors = require('cors');
-app.use(cors());
-
-
-
