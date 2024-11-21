@@ -21,12 +21,11 @@ app.use(express.static("../public"));
 app.post(
   "/",
   [
-    body("lessonId")
-      .isInt({ gt: 0 })
-      .withMessage("Lesson ID must be a positive integer"),
-    body("quantity")
-      .isInt({ gt: 0 })
-      .withMessage("Quantity must be a positive integer"),
+    body("name").notEmpty().withMessage("Name is required"),
+    body("phone").isMobilePhone().withMessage("Phone number is required and must be valid"),
+    body("lessons").isArray({ min: 1 }).withMessage("Lessons must be an array."),
+    body("lessons.*.lessonId").isInt({ gt: 0 }).withMessage("Lesson ID must be a positive integer."),
+    body("lessons.*.quantity").isInt({ gt: 0 }).withMessage("Quantity must be a positive integer."),
   ],
   async (req, res) => {
     const errors = validationResult(req);
@@ -35,44 +34,55 @@ app.post(
     }
 
     try {
-      const { lessonId, quantity } = req.body;
+      const { name, phone, lessons } = req.body;
 
-      // Validate the lesson exists in the lessons collection
-      const lesson = await Lesson.findOne({ id: lessonId });
-      if (!lesson) {
-        return res.status(404).json({ error: "Lesson not found" });
-      }
-
-      // Check if enough spaces are available
-      if (lesson.spaces < quantity) {
-        return res.status(400).json({ error: "Not enough spaces available" });
-      }
-
-      // Update the spaces in the lesson
-      lesson.spaces -= quantity;
-      await lesson.save();
-
-      // Create and save the order
-      const newOrder = new Order({
-        lessonId,
-        quantity,
-        totalPrice: lesson.price * quantity,
-        status: "confirmed", // Default order status
+      // Create a new order object
+      const order = new Order({
+        name,
+        phone,
+        lessons: [],
+        status: "confirmed", // Default status
       });
 
-      await newOrder.save();
+      // Process each lesson in the order
+      for (const lessonData of lessons) {
+        const lesson = await Lesson.findOne({ id: lessonData.lessonId });
+        if (!lesson) {
+          return res.status(404).json({ error: `Lesson with ID ${lessonData.lessonId} not found` });
+        }
+
+        if (lesson.spaces < lessonData.quantity) {
+          return res.status(400).json({
+            error: `Not enough spaces for lesson ${lessonData.lessonId}`,
+          });
+        }
+
+        // Update the spaces in the lesson
+        lesson.spaces -= lessonData.quantity;
+        await lesson.save();
+
+        // Add this lesson to the order's lessons array
+        order.lessons.push({
+          lessonId: lessonData.lessonId,
+          quantity: lessonData.quantity,
+          totalPrice: lesson.price * lessonData.quantity,
+        });
+      }
+
+      // Save the order to the database
+      await order.save();
 
       // Return success response
-      res.status(200).json({
-        message: "Order placed successfully!",
-        order: newOrder,
-      });
+      res.status(200).json({ message: "Order placed successfully!", order });
     } catch (error) {
-      console.error("Error creating order:", error);
-      res.status(500).json({ error: "Internal server error" });
+      console.error("Error processing order:", error);
+      res.status(500).json({ error: error.message || "Internal server error" });
     }
   }
 );
+
+
+
 
 // MongoDB connection
 mongoose
