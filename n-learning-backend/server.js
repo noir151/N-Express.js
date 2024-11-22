@@ -81,15 +81,9 @@ app.post(
   }
 );
 
-
-
-
 // MongoDB connection
 mongoose
-  .connect(process.env.MONGODB_URI, {
-    useNewUrlParser: true,
-    useUnifiedTopology: true,
-  })
+  .connect(process.env.MONGODB_URI) // No options needed for mongoose 6.x and above
   .then(() => console.log("Connected to MongoDB"))
   .catch((err) => console.error("MongoDB connection error:", err));
 
