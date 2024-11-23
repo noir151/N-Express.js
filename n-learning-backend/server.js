@@ -81,7 +81,10 @@ app.post(
   }
 );
 
+
 // MongoDB connection
+const mongoURI = process.env.MONGO_URI || "mongodb+srv://noir:noir@cluster51.3zm8d.mongodb.net/n-learning?authSource=Cluster51&authMechanism=SCRAM-SHA-1";
+
 mongoose
   .connect(process.env.MONGODB_URI) // No options needed for mongoose 6.x and above
   .then(() => console.log("Connected to MongoDB"))
