@@ -8,13 +8,11 @@ const ordersRoutes = require("../n-learning-backend/routes/orders");
 const Lesson = require("./models/Lesson");
 const Order = require("./models/Order");
 
-// Load environment variables
 dotenv.config();
 
-// Initialize Express app
 const app = express();
 app.use(express.json());
-app.use(cors({ origin: "http://localhost:5000", credentials: true })); // Adjust frontend port if needed
+app.use(cors({ origin: "http://localhost:5000", credentials: true })); // Adjust frontend port
 
 // Serve static files from the public folder
 app.use(express.static("../public"));
@@ -84,10 +82,10 @@ app.post(
 );
 
 // MongoDB connection
-const mongoURI = process.env.MONGODB_URI || "mongodb+srv://noir:noir@cluster51.3zm8d.mongodb.net/n-learning?authSource=Cluster51&authMechanism=SCRAM-SHA-1";
+const mongoURI = process.env.MONGO_URI || "mongodb+srv://noir:noir@cluster51.3zm8d.mongodb.net/n-learning?authSource=Cluster51&authMechanism=SCRAM-SHA-1";
 
 mongoose
-  .connect(mongoURI, { useNewUrlParser: true, useUnifiedTopology: true }) // Connection options
+  .connect(process.env.MONGODB_URI) // No options needed for mongoose 6.x and above
   .then(() => console.log("Connected to MongoDB"))
   .catch((err) => console.error("MongoDB connection error:", err));
 
@@ -95,6 +93,5 @@ mongoose
 app.use("/lessons", lessonsRoutes);
 app.use("/orders", ordersRoutes);
 
-// Start server
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
