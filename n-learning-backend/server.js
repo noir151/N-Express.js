@@ -10,6 +10,16 @@ const Order = require("./models/Order");
 
 dotenv.config();
 
+const frontendUrl = "https://noir151.github.io/N-Vue.js/"; 
+
+app.use(express.json());
+app.use(
+  cors({
+    origin: frontendUrl, 
+    credentials: true,    
+  })
+);
+
 const app = express();
 app.use(express.json());
 app.use(cors({ origin: "http://localhost:5000", credentials: true })); // Adjust frontend port
