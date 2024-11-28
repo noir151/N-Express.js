@@ -10,6 +10,14 @@ const Order = require("./models/Order");
 
 dotenv.config();
 
+app.use(express.json());
+app.use(
+  cors({
+    origin: process.env.FRONTEND_URL || "https://github.com/noir151/N-Express.js.git", // Adjust to your frontend URL
+    credentials: true,
+  })
+);
+
 const app = express();
 app.use(express.json());
 app.use(cors({ origin: "http://localhost:5000", credentials: true })); // Adjust frontend port
