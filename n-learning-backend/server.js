@@ -4,8 +4,8 @@ const mongoose = require("mongoose");
 const dotenv = require("dotenv");
 const cors = require("cors");
 const { body, validationResult } = require("express-validator");
-const lessonsRoutes = require("../n-learning-backend/routes/lessons");
-const ordersRoutes = require("../n-learning-backend/routes/orders");
+const lessonsRoutes = require("./routes/lessons");
+const ordersRoutes = require("./routes/orders");
 const Lesson = require("./models/Lesson");
 const Order = require("./models/Order");
 
@@ -81,6 +81,17 @@ app.post(
     }
   }
 );
+
+//[-------GET route to fetch all lessons-------]
+app.get("/lessons", async (req, res) => {
+  try {
+    const lessons = await Lesson.find(); // Fetches all lessons from the database
+    res.status(200).json(lessons); // Sends an array of all lessons
+  } catch (error) {
+    console.error("Error fetching lessons:", error);
+    res.status(500).json({ error: error.message || "Internal server error" });
+  }
+});
 
 //[-------MongoDB connection-------]
 const mongoURI = process.env.MONGO_URI || "mongodb+srv://noir:noir@cluster51.3zm8d.mongodb.net/n-learning?authSource=Cluster51&authMechanism=SCRAM-SHA-1";
