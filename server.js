@@ -1,31 +1,24 @@
+//[-------Imports-------]
 const express = require("express");
 const mongoose = require("mongoose");
 const dotenv = require("dotenv");
 const cors = require("cors");
 const { body, validationResult } = require("express-validator");
-const lessonsRoutes = require("../n-learning-backend/routes/lessons");
-const ordersRoutes = require("../n-learning-backend/routes/orders");
+const lessonsRoutes = require("./routes/lessons");
+const ordersRoutes = require("./routes/orders");
 const Lesson = require("./models/Lesson");
 const Order = require("./models/Order");
 
 dotenv.config();
 
-app.use(express.json());
-app.use(
-  cors({
-    origin: process.env.FRONTEND_URL || "https://github.com/noir151/N-Express.js.git", // Adjust to your frontend URL
-    credentials: true,
-  })
-);
-
 const app = express();
 app.use(express.json());
 app.use(cors({ origin: "http://localhost:5000", credentials: true })); // Adjust frontend port
 
-// Serve static files from the public folder
+//[-------Static files from the public folder-------]
 app.use(express.static("../public"));
 
-// Order creation route
+//[-------Order creation route-------]
 app.post(
   "/",
   [
@@ -44,7 +37,7 @@ app.post(
     try {
       const { name, phone, lessons } = req.body;
 
-      // Create a new order object
+      //[-------Creates a new order object--------]
       const order = new Order({
         name,
         phone,
@@ -52,7 +45,7 @@ app.post(
         status: "confirmed", // Default status
       });
 
-      // Process each lesson in the order
+      //[-------Process each lesson in the order-------]
       for (const lessonData of lessons) {
         const lesson = await Lesson.findOne({ id: lessonData.lessonId });
         if (!lesson) {
@@ -65,11 +58,11 @@ app.post(
           });
         }
 
-        // Update the spaces in the lesson
+        //[-------Updates the spaces in the lesson-------]
         lesson.spaces -= lessonData.quantity;
         await lesson.save();
 
-        // Add this lesson to the order's lessons array
+        //[-------Adds the lesson to the order's lessons array------]
         order.lessons.push({
           lessonId: lessonData.lessonId,
           quantity: lessonData.quantity,
@@ -77,10 +70,10 @@ app.post(
         });
       }
 
-      // Save the order to the database
+      //[-------Saves the order to the database-------]
       await order.save();
 
-      // Return success response
+      //[------Returns success response-------]
       res.status(200).json({ message: "Order placed successfully!", order });
     } catch (error) {
       console.error("Error processing order:", error);
@@ -89,15 +82,26 @@ app.post(
   }
 );
 
-// MongoDB connection
+//[-------GET route to fetch all lessons-------]
+app.get("/lessons", async (req, res) => {
+  try {
+    const lessons = await Lesson.find(); // Fetches all lessons from the database
+    res.status(200).json(lessons); // Sends an array of all lessons
+  } catch (error) {
+    console.error("Error fetching lessons:", error);
+    res.status(500).json({ error: error.message || "Internal server error" });
+  }
+});
+
+//[-------MongoDB connection-------]
 const mongoURI = process.env.MONGO_URI || "mongodb+srv://noir:noir@cluster51.3zm8d.mongodb.net/n-learning?authSource=Cluster51&authMechanism=SCRAM-SHA-1";
 
 mongoose
-  .connect(process.env.MONGODB_URI) // No options needed for mongoose 6.x and above
+  .connect(process.env.MONGODB_URI) 
   .then(() => console.log("Connected to MongoDB"))
   .catch((err) => console.error("MongoDB connection error:", err));
 
-// API routes
+//[-------API routes-------]
 app.use("/lessons", lessonsRoutes);
 app.use("/orders", ordersRoutes);
 
